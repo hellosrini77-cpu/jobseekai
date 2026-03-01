@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import formidable from 'formidable';
 import fs from 'fs';
-import pdfParse from 'pdf-parse';
+import pdfParse from 'pdf-parse/lib/pdf-parse.js';
 
 export const config = {
   api: {
