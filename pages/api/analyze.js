@@ -13,7 +13,7 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-const ANALYSIS_PROMPT = `You are an expert ATS (Applicant Tracking System) analyst and resume coach with deep knowledge of how modern ATS systems including Workday, Greenhouse, Lever, iCIMS, and Taleo parse, score, and filter resumes.
+const ANALYSIS_PROMPT = `You are an expert ATS (Applicant Tracking System) analyst and resume coach with deep knowledge of how modern ATS systems parse, score, and filter resumes.
 
 You will be given a RESUME and a JOB DESCRIPTION.
 
@@ -35,9 +35,19 @@ Scoring criteria:
 
 Be brutally honest with the score. A resume that scores 85+ should genuinely be competitive. Most resumes score between 35-65.
 
+For the atsBreakdown, score each ATS system individually based on their known parsing behaviors:
+- Workday: penalizes two-column layouts, tables, text boxes, fancy fonts; rewards plain chronological format, standard section headers
+- Greenhouse: more flexible with formatting; heavily weights keyword density and title matching
+- Lever: strong on skills section parsing; rewards structured bullet points with action verbs
+- iCIMS: strict on date formatting, section headers must be standard (Experience, Education, Skills); penalizes graphics
+- Taleo: oldest/strictest parser; penalizes PDFs with complex formatting, rewards plain text-like structure, very keyword-literal
+- SmartRecruiters: modern parser, handles most formats well; weights skills tags and keyword frequency
+- Jobvite: rewards quantified achievements and LinkedIn-style profiles; penalizes missing contact info fields
+- BambooHR: primarily used for SMBs; relatively lenient parser, standard keyword matching
+
 Respond with this exact JSON structure:
 {
-  "atsScore": <number 0-100>,
+  "atsScore": <number 0-100, overall weighted average>,
   "scoreBreakdown": {
     "requiredKeywords": <number 0-30>,
     "preferredKeywords": <number 0-15>,
@@ -45,6 +55,48 @@ Respond with this exact JSON structure:
     "quantifiedAchievements": <number 0-15>,
     "formatting": <number 0-10>,
     "narrativeFit": <number 0-10>
+  },
+  "atsBreakdown": {
+    "workday": {
+      "score": <number 0-100>,
+      "verdict": "<one sentence assessment>",
+      "issues": ["<specific issue>", "<specific issue>"]
+    },
+    "greenhouse": {
+      "score": <number 0-100>,
+      "verdict": "<one sentence assessment>",
+      "issues": ["<specific issue>", "<specific issue>"]
+    },
+    "lever": {
+      "score": <number 0-100>,
+      "verdict": "<one sentence assessment>",
+      "issues": ["<specific issue>", "<specific issue>"]
+    },
+    "icims": {
+      "score": <number 0-100>,
+      "verdict": "<one sentence assessment>",
+      "issues": ["<specific issue>", "<specific issue>"]
+    },
+    "taleo": {
+      "score": <number 0-100>,
+      "verdict": "<one sentence assessment>",
+      "issues": ["<specific issue>", "<specific issue>"]
+    },
+    "smartrecruiters": {
+      "score": <number 0-100>,
+      "verdict": "<one sentence assessment>",
+      "issues": ["<specific issue>", "<specific issue>"]
+    },
+    "jobvite": {
+      "score": <number 0-100>,
+      "verdict": "<one sentence assessment>",
+      "issues": ["<specific issue>", "<specific issue>"]
+    },
+    "bamboohr": {
+      "score": <number 0-100>,
+      "verdict": "<one sentence assessment>",
+      "issues": ["<specific issue>", "<specific issue>"]
+    }
   },
   "verdict": "<one sentence brutally honest assessment>",
   "topPriorities": [
@@ -138,7 +190,7 @@ export default async function handler(req, res) {
 
     // Call Claude
     const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-5-20251001',
       max_tokens: 8192,
       messages: [
         {
