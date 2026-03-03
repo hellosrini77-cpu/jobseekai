@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import formidable from 'formidable';
 import fs from 'fs';
 import pdfParse from 'pdf-parse/lib/pdf-parse.js';
+import mammoth from 'mammoth';
 
 export const config = {
   api: {
@@ -87,24 +88,41 @@ export default async function handler(req, res) {
     const resumeFile = Array.isArray(files.resume) ? files.resume[0] : files.resume;
 
     if (!jdText || !jdText.trim()) return res.status(400).json({ error: 'Job description is required' });
-    if (!resumeFile) return res.status(400).json({ error: 'Resume PDF is required' });
+    if (!resumeFile) return res.status(400).json({ error: 'Resume file is required' });
 
-    const pdfBuffer = fs.readFileSync(resumeFile.filepath);
-    const pdfData = await pdfParse(pdfBuffer);
-    const resumeText = pdfData.text;
+    const fileBuffer = fs.readFileSync(resumeFile.filepath);
+    const mimeType = resumeFile.mimetype || '';
+    const fileName = (resumeFile.originalFilename || '').toLowerCase();
 
-    if (!resumeText || resumeText.trim().length < 100) {
-      return res.status(400).json({ error: 'Could not extract text from PDF.' });
+    let resumeText = '';
+
+    if (mimeType === 'application/pdf' || fileName.endsWith('.pdf')) {
+      const pdfData = await pdfParse(fileBuffer);
+      resumeText = pdfData.text;
+    } else if (
+      mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+      mimeType === 'application/msword' ||
+      fileName.endsWith('.docx') ||
+      fileName.endsWith('.doc')
+    ) {
+      const result = await mammoth.extractRawText({ buffer: fileBuffer });
+      resumeText = result.value;
+    } else {
+      return res.status(400).json({ error: 'Unsupported file type. Please upload a PDF or DOCX file.' });
     }
 
     fs.unlinkSync(resumeFile.filepath);
+
+    if (!resumeText || resumeText.trim().length < 100) {
+      return res.status(400).json({ error: 'Could not extract text from file. Please try a different file.' });
+    }
 
     const prompt = ATS_PROMPT
       .replace('{{RESUME_TEXT}}', resumeText)
       .replace('{{JD_TEXT}}', jdText);
 
     const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 4096,
       messages: [{ role: 'user', content: prompt }]
     });
