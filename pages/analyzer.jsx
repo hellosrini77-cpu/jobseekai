@@ -18,6 +18,18 @@ const scoreLabel = (score) => {
   return 'At Risk';
 };
 
+const ACCEPTED_TYPES = [
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/msword',
+];
+
+const isValidFile = (file) => {
+  if (!file) return false;
+  const name = file.name.toLowerCase();
+  return ACCEPTED_TYPES.includes(file.type) || name.endsWith('.pdf') || name.endsWith('.docx') || name.endsWith('.doc');
+};
+
 export default function Analyzer() {
   const [resumeFile, setResumeFile] = useState(null);
   const [jd, setJd] = useState('');
@@ -35,27 +47,27 @@ export default function Analyzer() {
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
-    if (file && file.type === 'application/pdf') {
+    if (file && isValidFile(file)) {
       setResumeFile(file);
       setError(null);
     } else {
-      setError('Please upload a PDF file.');
+      setError('Please upload a PDF or DOCX file.');
     }
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
     const file = e.dataTransfer.files[0];
-    if (file && file.type === 'application/pdf') {
+    if (file && isValidFile(file)) {
       setResumeFile(file);
       setError(null);
     } else {
-      setError('Please upload a PDF file.');
+      setError('Please upload a PDF or DOCX file.');
     }
   };
 
   const handleAnalyze = async () => {
-    if (!resumeFile) { setError('Please upload your resume PDF.'); return; }
+    if (!resumeFile) { setError('Please upload your resume.'); return; }
     if (!jd.trim()) { setError('Please paste the job description.'); return; }
 
     setLoading(true);
@@ -252,7 +264,6 @@ export default function Analyzer() {
         .title-reason { font-size: 13px; color: var(--muted); line-height: 1.6; margin-bottom: 24px; font-style: italic; }
         .summary-box { background: #faf7f2; border: 1px solid var(--border); border-radius: 8px; padding: 20px 22px; font-size: 14px; line-height: 1.7; color: #3a3530; }
 
-        /* ATS COMPATIBILITY */
         .ats-summary-bar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
         .ats-summary-card { background: #faf7f2; border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; text-align: center; }
         .ats-summary-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); font-weight: 600; margin-bottom: 6px; }
@@ -338,13 +349,13 @@ export default function Analyzer() {
                     </div>
                   ) : (
                     <div className="drop-text">
-                      <strong>Drop your PDF here</strong>
+                      <strong>Drop your resume here</strong>
                       or click to browse
                     </div>
                   )}
-                  <div className="drop-hint">PDF only · Max 5MB</div>
+                  <div className="drop-hint">PDF or DOCX · Max 5MB</div>
                 </div>
-                <input ref={fileInputRef} type="file" accept=".pdf" style={{display:'none'}} onChange={handleFileChange} />
+                <input ref={fileInputRef} type="file" accept=".pdf,.docx,.doc" style={{display:'none'}} onChange={handleFileChange} />
               </div>
 
               <div className="input-card">
