@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import formidable from 'formidable';
 import fs from 'fs';
 import pdfParse from 'pdf-parse/lib/pdf-parse.js';
+import mammoth from 'mammoth';
 
 export const config = {
   api: {
@@ -12,6 +13,22 @@ export const config = {
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
+
+// ─── Extract text from PDF or DOCX ───────────────────────────────────────────
+async function extractResumeText(filepath, mimetype, originalFilename) {
+  const buffer = fs.readFileSync(filepath);
+  const isDocx =
+    mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+    (originalFilename && originalFilename.toLowerCase().endsWith('.docx'));
+
+  if (isDocx) {
+    const result = await mammoth.extractRawText({ buffer });
+    return result.value;
+  } else {
+    const pdfData = await pdfParse(buffer);
+    return pdfData.text;
+  }
+}
 
 const ANALYSIS_PROMPT = `You are an expert ATS (Applicant Tracking System) analyst and resume coach with deep knowledge of how modern ATS systems parse, score, and filter resumes.
 
@@ -150,8 +167,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    // Parse multipart form data
-    const form = formidable({ maxFileSize: 5 * 1024 * 1024 }); // 5MB limit
+    const form = formidable({ maxFileSize: 5 * 1024 * 1024 });
 
     const [fields, files] = await new Promise((resolve, reject) => {
       form.parse(req, (err, fields, files) => {
@@ -166,53 +182,42 @@ export default async function handler(req, res) {
     if (!jdText || !jdText.trim()) {
       return res.status(400).json({ error: 'Job description is required' });
     }
-
     if (!resumeFile) {
-      return res.status(400).json({ error: 'Resume PDF is required' });
+      return res.status(400).json({ error: 'Resume file is required' });
     }
 
-    // Extract text from PDF
-    const pdfBuffer = fs.readFileSync(resumeFile.filepath);
-    const pdfData = await pdfParse(pdfBuffer);
-    const resumeText = pdfData.text;
+    // Extract text from PDF or DOCX
+    const resumeText = await extractResumeText(
+      resumeFile.filepath,
+      resumeFile.mimetype,
+      resumeFile.originalFilename
+    );
 
     if (!resumeText || resumeText.trim().length < 100) {
-      return res.status(400).json({ error: 'Could not extract text from PDF. Please ensure the PDF contains selectable text (not a scanned image).' });
+      return res.status(400).json({ error: 'Could not extract text from file. Please ensure your resume contains selectable text.' });
     }
 
-    // Clean up temp file
     fs.unlinkSync(resumeFile.filepath);
 
-    // Build prompt
     const prompt = ANALYSIS_PROMPT
       .replace('{{RESUME_TEXT}}', resumeText)
       .replace('{{JD_TEXT}}', jdText);
 
-    // Call Claude
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-5-20251001',
       max_tokens: 8192,
-      messages: [
-        {
-          role: 'user',
-          content: prompt
-        }
-      ]
+      messages: [{ role: 'user', content: prompt }]
     });
 
     const responseText = message.content[0].text;
 
-    // Parse JSON
     let result;
     try {
       result = JSON.parse(responseText);
     } catch {
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        result = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error('Failed to parse response as JSON');
-      }
+      if (jsonMatch) result = JSON.parse(jsonMatch[0]);
+      else throw new Error('Failed to parse response as JSON');
     }
 
     return res.status(200).json(result);
