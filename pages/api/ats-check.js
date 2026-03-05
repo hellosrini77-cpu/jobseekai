@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import formidable from 'formidable';
 import fs from 'fs';
 import pdfParse from 'pdf-parse/lib/pdf-parse.js';
+import mammoth from 'mammoth';
 
 export const config = {
   api: {
@@ -12,6 +13,22 @@ export const config = {
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
+
+// ─── Extract text from PDF or DOCX ───────────────────────────────────────────
+async function extractResumeText(filepath, mimetype, originalFilename) {
+  const buffer = fs.readFileSync(filepath);
+  const isDocx =
+    mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+    (originalFilename && originalFilename.toLowerCase().endsWith('.docx'));
+
+  if (isDocx) {
+    const result = await mammoth.extractRawText({ buffer });
+    return result.value;
+  } else {
+    const pdfData = await pdfParse(buffer);
+    return pdfData.text;
+  }
+}
 
 const ATS_PROMPT = `You are an expert in how enterprise ATS (Applicant Tracking System) platforms parse and score resumes.
 
@@ -87,14 +104,17 @@ export default async function handler(req, res) {
     const resumeFile = Array.isArray(files.resume) ? files.resume[0] : files.resume;
 
     if (!jdText || !jdText.trim()) return res.status(400).json({ error: 'Job description is required' });
-    if (!resumeFile) return res.status(400).json({ error: 'Resume PDF is required' });
+    if (!resumeFile) return res.status(400).json({ error: 'Resume file is required' });
 
-    const pdfBuffer = fs.readFileSync(resumeFile.filepath);
-    const pdfData = await pdfParse(pdfBuffer);
-    const resumeText = pdfData.text;
+    // Extract text from PDF or DOCX
+    const resumeText = await extractResumeText(
+      resumeFile.filepath,
+      resumeFile.mimetype,
+      resumeFile.originalFilename
+    );
 
     if (!resumeText || resumeText.trim().length < 100) {
-      return res.status(400).json({ error: 'Could not extract text from PDF.' });
+      return res.status(400).json({ error: 'Could not extract text from file.' });
     }
 
     fs.unlinkSync(resumeFile.filepath);
