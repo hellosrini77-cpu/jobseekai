@@ -298,6 +298,7 @@ export default function Analyzer() {
         dateApplied: new Date().toISOString().split('T')[0],
         workType,
         compensation: compMatch ? compMatch[0] : '',
+        atsScore: result?.atsScore || '',
         status: 'Applied',
         notes: '',
       };
