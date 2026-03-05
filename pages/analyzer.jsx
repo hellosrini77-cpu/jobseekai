@@ -222,22 +222,22 @@ export default function Analyzer() {
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
-    if (file && file.type === 'application/pdf') {
+    if (file && (file.type === 'application/pdf' || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || file.name.endsWith('.docx'))) {
       setResumeFile(file);
       setError(null);
     } else {
-      setError('Please upload a PDF file.');
+      setError('Please upload a PDF or DOCX file.');
     }
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
     const file = e.dataTransfer.files[0];
-    if (file && file.type === 'application/pdf') {
+    if (file && (file.type === 'application/pdf' || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || file.name.endsWith('.docx'))) {
       setResumeFile(file);
       setError(null);
     } else {
-      setError('Please upload a PDF file.');
+      setError('Please upload a PDF or DOCX file.');
     }
   };
 
@@ -512,13 +512,13 @@ export default function Analyzer() {
                     </div>
                   ) : (
                     <div className="drop-text">
-                      <strong>Drop your PDF here</strong>
+                      <strong>Drop your PDF or DOCX here</strong>
                       or click to browse
                     </div>
                   )}
-                  <div className="drop-hint">PDF only · Max 5MB</div>
+                  <div className="drop-hint">PDF or DOCX · Max 5MB</div>
                 </div>
-                <input ref={fileInputRef} type="file" accept=".pdf" style={{ display: 'none' }} onChange={handleFileChange} />
+                <input ref={fileInputRef} type="file" accept=".pdf,.docx" style={{ display: 'none' }} onChange={handleFileChange} />
               </div>
 
               <div className="input-card">
