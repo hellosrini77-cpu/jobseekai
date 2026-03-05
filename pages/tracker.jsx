@@ -29,7 +29,23 @@ function WorkTypeBadge({ type }) {
 
 const emptyForm = {
   company: '', role: '', dateApplied: new Date().toISOString().split('T')[0],
-  workType: 'Unknown', compensation: '', status: 'Applied', notes: '',
+  workType: 'Unknown', compensation: '', status: 'Applied', notes: '', atsScore: '',
+};
+
+const exportCSV = (apps) => {
+  const headers = ['Company', 'Role', 'Date Applied', 'Work Type', 'Compensation', 'ATS Score', 'Status', 'Notes'];
+  const rows = apps.map(a => [
+    a.company, a.role, a.dateApplied, a.workType, a.compensation,
+    a.atsScore || '', a.status, a.notes
+  ].map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(','));
+  const csv = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `jobseekai_applications_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 };
 
 export default function Tracker() {
@@ -137,12 +153,20 @@ export default function Tracker() {
               Track every application, interview, and offer in one place.
             </p>
           </div>
-          <button
-            onClick={() => { setForm(emptyForm); setEditId(null); setShowForm(!showForm); }}
-            style={{ background: 'var(--ink)', color: 'var(--cream)', border: 'none', borderRadius: 8, padding: '12px 24px', fontSize: 14, fontWeight: 600, cursor: 'pointer', flexShrink: 0, marginTop: 8 }}
-          >
-            + Add Application
-          </button>
+          <div style={{ display: 'flex', gap: 10, flexShrink: 0, marginTop: 8 }}>
+            {apps.length > 0 && (
+              <button onClick={() => exportCSV(apps)}
+                style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 20px', fontSize: 13, fontWeight: 600, color: 'var(--muted)', cursor: 'pointer' }}>
+                ↓ Export CSV
+              </button>
+            )}
+            <button
+              onClick={() => { setForm(emptyForm); setEditId(null); setShowForm(!showForm); }}
+              style={{ background: 'var(--ink)', color: 'var(--cream)', border: 'none', borderRadius: 8, padding: '12px 24px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+            >
+              + Add Application
+            </button>
+          </div>
         </div>
 
         {/* Stats */}
@@ -180,7 +204,7 @@ export default function Tracker() {
                 </div>
               ))}
             </div>
-            <div className="form-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 16 }}>
+            <div className="form-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 16 }}>
               <div>
                 <label style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1.5px', color: 'var(--muted)', display: 'block', marginBottom: 6 }}>Work Type</label>
                 <select value={form.workType} onChange={e => setForm(f => ({ ...f, workType: e.target.value }))}
@@ -192,6 +216,13 @@ export default function Tracker() {
                 <label style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1.5px', color: 'var(--muted)', display: 'block', marginBottom: 6 }}>Compensation</label>
                 <input type="text" placeholder="e.g. $120K–$150K" value={form.compensation}
                   onChange={e => setForm(f => ({ ...f, compensation: e.target.value }))}
+                  style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 6, padding: '10px 12px', fontSize: 13, background: '#faf7f2', outline: 'none', color: 'var(--ink)' }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1.5px', color: 'var(--muted)', display: 'block', marginBottom: 6 }}>ATS Score</label>
+                <input type="number" min="0" max="100" placeholder="e.g. 78" value={form.atsScore}
+                  onChange={e => setForm(f => ({ ...f, atsScore: e.target.value }))}
                   style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 6, padding: '10px 12px', fontSize: 13, background: '#faf7f2', outline: 'none', color: 'var(--ink)' }}
                 />
               </div>
@@ -256,7 +287,7 @@ export default function Tracker() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: '#F5F0E8', borderBottom: '1px solid var(--border)' }}>
-                  {['Company', 'Role', 'Date', 'Type', 'Compensation', 'Status', 'Notes', ''].map(h => (
+                  {['Company', 'Role', 'Date', 'Type', 'Compensation', 'ATS Score', 'Status', 'Notes', ''].map(h => (
                     <th key={h} style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--muted)', textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
@@ -276,6 +307,14 @@ export default function Tracker() {
                     <td style={{ padding: '14px 16px' }}><WorkTypeBadge type={app.workType} /></td>
                     <td style={{ padding: '14px 16px', fontSize: 13, color: app.compensation ? 'var(--ink)' : '#ccc', whiteSpace: 'nowrap' }}>
                       {app.compensation || '—'}
+                    </td>
+                    <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                      {app.atsScore ? (
+                        <span style={{
+                          fontFamily: "'Playfair Display', serif", fontSize: 15, fontWeight: 700,
+                          color: app.atsScore >= 75 ? '#2d6a4f' : app.atsScore >= 50 ? '#856404' : '#c0392b'
+                        }}>{app.atsScore}</span>
+                      ) : <span style={{ color: '#ccc', fontSize: 13 }}>—</span>}
                     </td>
                     <td style={{ padding: '14px 16px' }}>
                       <select value={app.status} onChange={e => handleStatusChange(app.id, e.target.value)}
@@ -334,3 +373,5 @@ export default function Tracker() {
     </>
   );
 }
+
+
