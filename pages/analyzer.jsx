@@ -258,7 +258,7 @@ export default function Analyzer() {
 
       const [analyzeRes, atsRes] = await Promise.allSettled([
         fetch('/api/analyze', { method: 'POST', body: formData }),
-        fetch('/api/atscheck', { method: 'POST', body: formData }),
+        fetch('/api/ats-check', { method: 'POST', body: formData }),
       ]);
 
       if (analyzeRes.status === 'fulfilled' && analyzeRes.value.ok) {
