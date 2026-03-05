@@ -53,7 +53,7 @@ export default function Home() {
               onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.06)'; }}
             >
               <div style={{ fontSize: 32, marginBottom: 16 }}>📋</div>
-              <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, fontWeight: 700, marginBottom: 8 }}>Application Tracker</div>
+              <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, fontWeight: 700, marginBottom: 8, color: 'var(--ink)' }}>Application Tracker</div>
               <p style={{ fontSize: 14, color: 'var(--muted)', fontWeight: 300, lineHeight: 1.6, marginBottom: 20 }}>
                 Track every application, interview, and offer. Status updates, compensation, work type — your whole pipeline in one place.
               </p>
