@@ -217,6 +217,7 @@ export default function Analyzer() {
   const [expandedBullet, setExpandedBullet] = useState(null);
   const [expandedMissing, setExpandedMissing] = useState(null);
   const [copiedBullet, setCopiedBullet] = useState(null);
+  const [savedToTracker, setSavedToTracker] = useState(false);
   const fileInputRef = useRef(null);
 
   const handleFileChange = (e) => {
@@ -248,19 +249,18 @@ export default function Analyzer() {
     setError(null);
     setResult(null);
     setAtsResult(null);
+    setSavedToTracker(false);
 
     try {
       const formData = new FormData();
       formData.append('resume', resumeFile);
       formData.append('jd', jd);
 
-      // Run both APIs in parallel
       const [analyzeRes, atsRes] = await Promise.allSettled([
         fetch('/api/analyze', { method: 'POST', body: formData }),
         fetch('/api/atscheck', { method: 'POST', body: formData }),
       ]);
 
-      // Handle analyze result
       if (analyzeRes.status === 'fulfilled' && analyzeRes.value.ok) {
         const data = await analyzeRes.value.json();
         setResult(data);
@@ -271,7 +271,6 @@ export default function Analyzer() {
         throw new Error(errData.error || 'Analysis failed');
       }
 
-      // Handle atscheck result (non-blocking — won't break the page if it fails)
       if (atsRes.status === 'fulfilled' && atsRes.value.ok) {
         const atsData = await atsRes.value.json();
         setAtsResult(atsData);
@@ -285,6 +284,26 @@ export default function Analyzer() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const saveToTracker = () => {
+    try {
+      const existing = JSON.parse(localStorage.getItem('jobseekai_tracker') || '[]');
+      const workType = /\bremote\b/i.test(jd) ? 'Remote' : /\bhybrid\b/i.test(jd) ? 'Hybrid' : /\bonsite\b|on-site\b/i.test(jd) ? 'Onsite' : 'Unknown';
+      const compMatch = jd.match(/\$[\d,]+[Kk]?\s*[-–]\s*\$[\d,]+[Kk]?|\$[\d,]+[Kk]\+?/);
+      const entry = {
+        id: Date.now(),
+        company: '',
+        role: result?.titleRecommendation?.current || '',
+        dateApplied: new Date().toISOString().split('T')[0],
+        workType,
+        compensation: compMatch ? compMatch[0] : '',
+        status: 'Applied',
+        notes: '',
+      };
+      localStorage.setItem('jobseekai_tracker', JSON.stringify([...existing, entry]));
+      setSavedToTracker(true);
+    } catch {}
   };
 
   const copyBullet = (text, id) => {
@@ -436,8 +455,12 @@ export default function Analyzer() {
         .title-reason { font-size: 13px; color: var(--muted); line-height: 1.6; margin-bottom: 24px; font-style: italic; }
         .summary-box { background: #faf7f2; border: 1px solid var(--border); border-radius: 8px; padding: 20px 22px; font-size: 14px; line-height: 1.7; color: #3a3530; }
 
-        .reset-btn { margin-top: 32px; background: none; border: 1px solid var(--border); border-radius: 6px; padding: 10px 24px; font-size: 13px; font-weight: 500; color: var(--muted); cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.15s; }
+        .bottom-actions { display: flex; gap: 12px; margin-top: 32px; align-items: center; flex-wrap: wrap; }
+        .reset-btn { background: none; border: 1px solid var(--border); border-radius: 6px; padding: 10px 24px; font-size: 13px; font-weight: 500; color: var(--muted); cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.15s; }
         .reset-btn:hover { border-color: var(--ink); color: var(--ink); }
+        .save-btn { background: var(--gold); color: var(--ink); border: none; border-radius: 6px; padding: 10px 24px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: background 0.15s; }
+        .save-btn:hover { background: var(--gold-light); }
+        .saved-msg { font-size: 13px; color: var(--green); font-weight: 500; display: flex; align-items: center; gap: 6px; }
 
         .ats-loading { text-align: center; padding: 40px; color: var(--muted); }
         .ats-loading-spinner { width: 32px; height: 32px; border: 2px solid var(--border); border-top-color: var(--gold); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
@@ -454,7 +477,10 @@ export default function Analyzer() {
 
       <nav>
         <a href="/" className="logo">JobSeek<span>AI</span></a>
-        <div className="nav-tag">ATS Resume Analyzer</div>
+        <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
+          <a href="/tracker" style={{ fontSize: 13, color: 'var(--muted)', textDecoration: 'none', fontWeight: 500 }}>📋 Tracker</a>
+          <div className="nav-tag">ATS Resume Analyzer</div>
+        </div>
       </nav>
 
       <div className="page">
@@ -731,9 +757,24 @@ export default function Analyzer() {
               </div>
             )}
 
-            <button className="reset-btn" onClick={() => { setResult(null); setAtsResult(null); setResumeFile(null); setJd(''); setError(null); }}>
-              ← Analyze Another Resume
-            </button>
+            {/* BOTTOM ACTIONS */}
+            <div className="bottom-actions">
+              <button className="reset-btn" onClick={() => { setResult(null); setAtsResult(null); setResumeFile(null); setJd(''); setError(null); setSavedToTracker(false); }}>
+                ← Analyze Another Resume
+              </button>
+              {!savedToTracker ? (
+                <button className="save-btn" onClick={saveToTracker}>
+                  📋 Save to Tracker
+                </button>
+              ) : (
+                <div className="saved-msg">
+                  ✓ Saved!
+                  <a href="/tracker" style={{ color: 'var(--green)', fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 3 }}>
+                    View Tracker →
+                  </a>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
