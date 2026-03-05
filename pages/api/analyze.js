@@ -204,7 +204,7 @@ export default async function handler(req, res) {
       .replace('{{JD_TEXT}}', jdText);
 
     const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-5-20251001',
+      model: 'claude-sonnet-4-6',
       max_tokens: 8192,
       messages: [{ role: 'user', content: prompt }]
     });
