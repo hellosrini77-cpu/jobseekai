@@ -2,11 +2,10 @@
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { jd, summary, verdict, keywords, titleCurrent, titleSuggested, tone,companyName } = req.body;
+  const { jd, summary, verdict, keywords, titleCurrent, titleSuggested, tone, companyName, jobTitle } = req.body;
   if (!jd || !summary) return res.status(400).json({ error: 'Missing required fields' });
 
-  // Extract company name from JD — look for common patterns
-   const toneInstructions = {
+  const toneInstructions = {
     professional: 'Write in a polished, precise, and confident professional tone. Formal but not stiff.',
     bold: 'Write in a bold, direct, and assertive tone. Lead with impact. No hedging.',
     warm: 'Write in a warm, personable, and relationship-focused tone. Genuine and human.',
@@ -15,6 +14,8 @@ export default async function handler(req, res) {
   const prompt = `You are an expert career coach writing a tailored cover letter.
 
 COMPANY NAME: ${companyName || 'the company'}
+EXACT JOB TITLE: ${jobTitle || 'see job description'}
+CRITICAL: You MUST use "${jobTitle || 'the role'}" as the job title throughout the cover letter. Never paraphrase, upgrade, or substitute it with any other title even if a different title appears in the job description.
 
 JOB DESCRIPTION:
 ${jd}
@@ -28,17 +29,14 @@ ${verdict}
 KEYWORDS ALREADY IN RESUME:
 ${keywords.join(', ')}
 
-IMPORTANT: Extract the exact job title directly from the JOB DESCRIPTION above. Do not infer, upgrade, or paraphrase the title.
-
 TONE: ${toneInstructions[tone] || toneInstructions.professional}
 
 Write a compelling, tailored cover letter for this role. Guidelines:
 - 4 paragraphs, no headers
-- Opening: hook that references the specific role at ${companyName} and why it resonates
+- Opening: hook that references the ${jobTitle || 'role'} at ${companyName || 'the company'} and why it resonates
 - Para 2: most relevant experience that maps directly to the JD requirements
 - Para 3: something unique/differentiating (AI/tech angle if applicable, specific achievement)
-- Closing: confident call to action referencing ${companyName}
-- IMPORTANT: Always use "${companyName}" as the company name — never substitute another company name
+- Closing: confident call to action referencing ${companyName || 'the company'}
 - Do NOT use generic phrases like "I am writing to apply" or "I am a hardworking individual"
 - Do NOT include date, address blocks, or "Dear Hiring Manager" — just the body paragraphs
 - Use the candidate's actual experience — do not fabricate achievements
