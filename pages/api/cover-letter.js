@@ -3,8 +3,13 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const { jd, summary, verdict, keywords, titleCurrent, titleSuggested, tone } = req.body;
-
   if (!jd || !summary) return res.status(400).json({ error: 'Missing required fields' });
+
+  // Extract company name from JD — look for common patterns
+  const companyMatch =
+    jd.match(/(?:at|join|about)\s+([A-Z][A-Za-z0-9\s&.,'-]{1,40}?)(?:\s*[,.\n]|\s+is\b|\s+we\b|\s+our\b)/m) ||
+    jd.match(/^([A-Z][A-Za-z0-9\s&.'-]{1,30}?)\s*\n/m);
+  const companyName = companyMatch ? companyMatch[1].trim() : 'the company';
 
   const toneInstructions = {
     professional: 'Write in a polished, precise, and confident professional tone. Formal but not stiff.',
@@ -13,6 +18,8 @@ export default async function handler(req, res) {
   };
 
   const prompt = `You are an expert career coach writing a tailored cover letter.
+
+COMPANY NAME: ${companyName}
 
 JOB DESCRIPTION:
 ${jd}
@@ -33,10 +40,11 @@ TONE: ${toneInstructions[tone] || toneInstructions.professional}
 
 Write a compelling, tailored cover letter for this role. Guidelines:
 - 4 paragraphs, no headers
-- Opening: hook that references the specific role/company and why it resonates
+- Opening: hook that references the specific role at ${companyName} and why it resonates
 - Para 2: most relevant experience that maps directly to the JD requirements
 - Para 3: something unique/differentiating (AI/tech angle if applicable, specific achievement)
-- Closing: confident call to action
+- Closing: confident call to action referencing ${companyName}
+- IMPORTANT: Always use "${companyName}" as the company name — never substitute another company name
 - Do NOT use generic phrases like "I am writing to apply" or "I am a hardworking individual"
 - Do NOT include date, address blocks, or "Dear Hiring Manager" — just the body paragraphs
 - Use the candidate's actual experience — do not fabricate achievements
@@ -68,7 +76,6 @@ Return ONLY the cover letter text, nothing else.`;
 
     const data = await response.json();
     const coverLetter = data.content?.[0]?.text?.trim();
-
     if (!coverLetter) throw new Error('No cover letter generated');
 
     return res.status(200).json({ coverLetter });
