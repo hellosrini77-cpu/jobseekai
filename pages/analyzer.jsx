@@ -21,7 +21,7 @@ function ScoreBar({ score, pass }) {
   return (
     <div style={{ width: '100%', height: 6, background: '#E8E3D9', borderRadius: 99, overflow: 'hidden' }}>
       <div style={{ width: `${score}%`, height: '100%', background: color, borderRadius: 99, transition: 'width 0.8s ease' }} />
-    </div>
+    </div>sections
   );
 }
 
@@ -139,7 +139,6 @@ function ATSBreakdown({ data }) {
         </p>
       </div>
 
-      {/* Summary strip */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, background: '#F5F0E8', borderRadius: 12, padding: '18px 20px', marginBottom: 24 }}>
         {[
           { label: 'Overall Score', value: `${overallCompatibility}`, unit: '/ 100' },
@@ -159,12 +158,10 @@ function ATSBreakdown({ data }) {
         ))}
       </div>
 
-      {/* ATS cards grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12, marginBottom: 24 }}>
         {atsResults.map(ats => <ATSCard key={ats.name} ats={ats} />)}
       </div>
 
-      {/* Universal fixes */}
       {universalFixes?.length > 0 && (
         <div style={{ background: '#FDFBF7', border: '1px solid #E2DDD4', borderRadius: 12, padding: '20px 24px' }}>
           <p style={{ margin: '0 0 14px', fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#B5A98B' }}>
@@ -179,6 +176,169 @@ function ATSBreakdown({ data }) {
                 <p style={{ margin: 0, fontSize: 13, color: '#333', lineHeight: 1.6 }}>{fix}</p>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── CoverLetter Component ────────────────────────────────────────────────────
+
+function CoverLetter({ result, jd }) {
+  const [tone, setTone] = useState('professional');
+  const [coverLetter, setCoverLetter] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [copied, setCopied] = useState(false);
+
+  const generate = async () => {
+    setLoading(true);
+    setError(null);
+    setCoverLetter('');
+
+    try {
+      const response = await fetch('/api/cover-letter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jd,
+          summary: result.summary,
+          verdict: result.verdict,
+          keywords: result.keywordAnalysis?.present || [],
+          titleCurrent: result.titleRecommendation?.current || '',
+          titleSuggested: result.titleRecommendation?.suggested || '',
+          tone,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to generate cover letter');
+      const data = await response.json();
+      setCoverLetter(data.coverLetter);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const copy = () => {
+    navigator.clipboard.writeText(coverLetter);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const tones = [
+    { value: 'professional', label: '💼 Professional', desc: 'Polished and precise' },
+    { value: 'bold', label: '🚀 Bold', desc: 'Confident and direct' },
+    { value: 'warm', label: '🤝 Warm', desc: 'Personable and relationship-focused' },
+  ];
+
+  return (
+    <div>
+      <div style={{ marginBottom: 24 }}>
+        <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#B5A98B' }}>
+          AI-Generated
+        </p>
+        <h2 style={{ margin: '0 0 8px', fontFamily: "'Playfair Display', serif", fontSize: 24, fontWeight: 700, color: '#1A1A1A', letterSpacing: '-0.02em' }}>
+          Cover Letter
+        </h2>
+        <p style={{ margin: 0, fontSize: 13, color: '#777' }}>
+          Generated from your resume analysis and job description. Choose a tone and generate.
+        </p>
+      </div>
+
+      {/* Tone selector */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
+        {tones.map(t => (
+          <div
+            key={t.value}
+            onClick={() => setTone(t.value)}
+            style={{
+              flex: 1, minWidth: 140, padding: '12px 16px', borderRadius: 10, cursor: 'pointer',
+              border: `2px solid ${tone === t.value ? '#c9a84c' : '#e0d8c8'}`,
+              background: tone === t.value ? '#fdf8ee' : '#fdfbf7',
+              transition: 'all 0.15s',
+            }}
+          >
+            <div style={{ fontSize: 13, fontWeight: 700, color: tone === t.value ? '#c9a84c' : '#1A1A1A', marginBottom: 2 }}>{t.label}</div>
+            <div style={{ fontSize: 11, color: '#999' }}>{t.desc}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Generate button */}
+      {!coverLetter && !loading && (
+        <button
+          onClick={generate}
+          style={{
+            width: '100%', background: '#0f0f0e', color: '#f5f0e8', border: 'none',
+            borderRadius: 8, padding: '16px', fontSize: 15, fontWeight: 600,
+            fontFamily: "'DM Sans', sans-serif", cursor: 'pointer', marginBottom: 16,
+          }}
+        >
+          ✍️ Generate Cover Letter
+        </button>
+      )}
+
+      {/* Loading */}
+      {loading && (
+        <div style={{ textAlign: 'center', padding: '40px 20px', background: '#faf7f2', borderRadius: 10, marginBottom: 16 }}>
+          <div style={{ width: 36, height: 36, border: '3px solid #e0d8c8', borderTopColor: '#c9a84c', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 14px' }} />
+          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 18, fontWeight: 700, marginBottom: 6 }}>Writing your cover letter...</div>
+          <div style={{ fontSize: 13, color: '#999' }}>Tailoring to the job description and your resume. Takes about 10 seconds.</div>
+        </div>
+      )}
+
+      {/* Error */}
+      {error && (
+        <div style={{ background: '#fde8e8', border: '1px solid #f5c6c6', borderRadius: 8, padding: '12px 16px', fontSize: 13, color: '#c0392b', marginBottom: 16 }}>
+          ⚠ {error}
+        </div>
+      )}
+
+      {/* Result */}
+      {coverLetter && (
+        <div style={{ animation: 'fadeUp 0.4s ease both' }}>
+          <div style={{
+            background: '#fdfbf7', border: '1px solid #e0d8c8', borderRadius: 10,
+            padding: '28px 32px', fontSize: 14, lineHeight: 1.9, color: '#2a2a28',
+            fontFamily: 'Georgia, serif', whiteSpace: 'pre-wrap', marginBottom: 16,
+          }}>
+            {coverLetter}
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <button
+              onClick={copy}
+              style={{
+                background: copied ? '#d1e7dd' : '#c9a84c', color: copied ? '#1E8449' : '#0f0f0e',
+                border: 'none', borderRadius: 6, padding: '10px 22px', fontSize: 13,
+                fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", transition: 'all 0.15s',
+              }}
+            >
+              {copied ? '✓ Copied!' : '📋 Copy to Clipboard'}
+            </button>
+            <button
+              onClick={() => { setCoverLetter(''); }}
+              style={{
+                background: 'none', border: '1px solid #e0d8c8', borderRadius: 6,
+                padding: '10px 22px', fontSize: 13, fontWeight: 500, color: '#6b6559',
+                cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+              }}
+            >
+              ↺ Regenerate
+            </button>
+            <button
+              onClick={generate}
+              style={{
+                background: 'none', border: '1px solid #e0d8c8', borderRadius: 6,
+                padding: '10px 22px', fontSize: 13, fontWeight: 500, color: '#6b6559',
+                cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+              }}
+            >
+              🔄 Try Different Tone
+            </button>
           </div>
         </div>
       )}
@@ -313,13 +473,14 @@ export default function Analyzer() {
     setTimeout(() => setCopiedBullet(null), 2000);
   };
 
-  const SECTIONS = ['keywords', 'platforms', 'rewrites', 'formatting', 'title'];
+  const SECTIONS = ['keywords', 'platforms', 'rewrites', 'formatting', 'title', 'cover-letter'];
   const sectionLabels = {
     keywords: 'Keywords',
     platforms: 'ATS Platforms',
     rewrites: 'Bullet Rewrites',
     formatting: 'Formatting',
     title: 'Title & Summary',
+    'cover-letter': '✍️ Cover Letter',
   };
 
   return (
@@ -407,6 +568,8 @@ export default function Analyzer() {
         .section-tab:last-child { border-right: none; }
         .section-tab:hover { background: #faf7f2; color: var(--ink); }
         .section-tab.active { background: var(--ink); color: var(--cream); font-weight: 600; }
+        .section-tab.cover-letter-tab { background: #fdf8ee; color: #c9a84c; font-weight: 600; }
+        .section-tab.cover-letter-tab.active { background: var(--ink); color: var(--cream); }
 
         .content-card { background: var(--white); border: 1px solid var(--border); border-radius: 12px; padding: 32px; animation: fadeUp 0.3s ease both; }
         .content-title { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; margin-bottom: 20px; letter-spacing: -0.3px; }
@@ -601,7 +764,11 @@ export default function Analyzer() {
             {/* SECTION TABS */}
             <div className="section-tabs">
               {SECTIONS.map(s => (
-                <button key={s} className={`section-tab ${activeSection === s ? 'active' : ''}`} onClick={() => setActiveSection(s)}>
+                <button
+                  key={s}
+                  className={`section-tab ${s === 'cover-letter' ? 'cover-letter-tab' : ''} ${activeSection === s ? 'active' : ''}`}
+                  onClick={() => setActiveSection(s)}
+                >
                   {sectionLabels[s]}
                   {s === 'rewrites' && result.bulletRewrites?.length > 0 && (
                     <span style={{ marginLeft: 6, background: activeSection === s ? 'rgba(255,255,255,0.2)' : 'var(--gold)', color: activeSection === s ? 'var(--cream)' : 'var(--ink)', fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 10 }}>
@@ -755,6 +922,13 @@ export default function Analyzer() {
                 )}
                 <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1.5px', color: 'var(--muted)', marginBottom: 10 }}>Overall Assessment</div>
                 <div className="summary-box">{result.summary}</div>
+              </div>
+            )}
+
+            {/* COVER LETTER */}
+            {activeSection === 'cover-letter' && (
+              <div className="content-card">
+                <CoverLetter result={result} jd={jd} />
               </div>
             )}
 
