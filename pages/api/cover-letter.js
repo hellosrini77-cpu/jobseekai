@@ -6,12 +6,7 @@ export default async function handler(req, res) {
   if (!jd || !summary) return res.status(400).json({ error: 'Missing required fields' });
 
   // Extract company name from JD — look for common patterns
-  const companyMatch =
-    jd.match(/(?:at|join|about)\s+([A-Z][A-Za-z0-9\s&.,'-]{1,40}?)(?:\s*[,.\n]|\s+is\b|\s+we\b|\s+our\b)/m) ||
-    jd.match(/^([A-Z][A-Za-z0-9\s&.'-]{1,30}?)\s*\n/m);
-  const companyName = companyMatch ? companyMatch[1].trim() : 'the company';
-
-  const toneInstructions = {
+   const toneInstructions = {
     professional: 'Write in a polished, precise, and confident professional tone. Formal but not stiff.',
     bold: 'Write in a bold, direct, and assertive tone. Lead with impact. No hedging.',
     warm: 'Write in a warm, personable, and relationship-focused tone. Genuine and human.',
