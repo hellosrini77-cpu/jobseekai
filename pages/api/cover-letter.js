@@ -28,9 +28,7 @@ ${verdict}
 KEYWORDS ALREADY IN RESUME:
 ${keywords.join(', ')}
 
-CANDIDATE'S CURRENT TITLE: ${titleCurrent}
-SUGGESTED TITLE FOR THIS ROLE: ${titleSuggested}
-ACTUAL JOB TITLE IN THE POSTING: Use the exact job title from the job description, not the suggested title above.
+IMPORTANT: Extract the exact job title directly from the JOB DESCRIPTION above. Do not infer, upgrade, or paraphrase the title.
 
 TONE: ${toneInstructions[tone] || toneInstructions.professional}
 
