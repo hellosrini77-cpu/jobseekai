@@ -185,7 +185,7 @@ function ATSBreakdown({ data }) {
 
 // ─── CoverLetter Component ────────────────────────────────────────────────────
 
-function CoverLetter({ result, jd }) {
+function CoverLetter({ result, jd, companyName }) {
   const [tone, setTone] = useState('professional');
   const [coverLetter, setCoverLetter] = useState('');
   const [loading, setLoading] = useState(false);
@@ -203,6 +203,7 @@ function CoverLetter({ result, jd }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           jd,
+          companyName: companyName.trim() || 'the company',
           summary: result.summary,
           verdict: result.verdict,
           keywords: result.keywordAnalysis?.present || [],
@@ -241,7 +242,7 @@ function CoverLetter({ result, jd }) {
           AI-Generated
         </p>
         <h2 style={{ margin: '0 0 8px', fontFamily: "'Playfair Display', serif", fontSize: 24, fontWeight: 700, color: '#1A1A1A', letterSpacing: '-0.02em' }}>
-          Cover Letter
+          Cover Letter {companyName ? `— ${companyName}` : ''}
         </h2>
         <p style={{ margin: 0, fontSize: 13, color: '#777' }}>
           Generated from your resume analysis and job description. Choose a tone and generate.
@@ -369,6 +370,7 @@ const scoreLabel = (score) => {
 export default function Analyzer() {
   const [resumeFile, setResumeFile] = useState(null);
   const [jd, setJd] = useState('');
+  const [companyName, setCompanyName] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [atsResult, setAtsResult] = useState(null);
@@ -453,7 +455,7 @@ export default function Analyzer() {
       const compMatch = jd.match(/\$[\d,]+[Kk]?\s*[-–]\s*\$[\d,]+[Kk]?|\$[\d,]+[Kk]\+?/);
       const entry = {
         id: Date.now(),
-        company: '',
+        company: companyName || '',
         role: result?.titleRecommendation?.current || '',
         dateApplied: new Date().toISOString().split('T')[0],
         workType,
@@ -533,7 +535,11 @@ export default function Analyzer() {
         .drop-text.success strong { color: var(--green); }
         .drop-hint { font-size: 11px; color: var(--muted); margin-top: 8px; }
 
-        .jd-textarea { width: 100%; height: 200px; border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; font-family: 'DM Sans', sans-serif; font-size: 13px; line-height: 1.6; color: var(--ink); background: #faf7f2; resize: vertical; transition: border-color 0.2s; outline: none; }
+        .company-input { width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--ink); background: #faf7f2; transition: border-color 0.2s; outline: none; margin-bottom: 16px; }
+        .company-input:focus { border-color: var(--gold); background: var(--white); }
+        .company-input::placeholder { color: #b0a898; }
+
+        .jd-textarea { width: 100%; height: 170px; border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; font-family: 'DM Sans', sans-serif; font-size: 13px; line-height: 1.6; color: var(--ink); background: #faf7f2; resize: vertical; transition: border-color 0.2s; outline: none; }
         .jd-textarea:focus { border-color: var(--gold); background: var(--white); }
         .jd-textarea::placeholder { color: #b0a898; }
         .jd-count { font-size: 11px; color: var(--muted); margin-top: 6px; text-align: right; }
@@ -686,6 +692,13 @@ export default function Analyzer() {
 
               <div className="input-card">
                 <label className="input-label">Job Description</label>
+                <input
+                  className="company-input"
+                  type="text"
+                  placeholder="Company name (e.g. Ripple) — used for cover letter"
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                />
                 <textarea
                   className="jd-textarea"
                   placeholder="Paste the full job description here — include requirements, responsibilities, and preferred qualifications for best results..."
@@ -928,13 +941,13 @@ export default function Analyzer() {
             {/* COVER LETTER */}
             {activeSection === 'cover-letter' && (
               <div className="content-card">
-                <CoverLetter result={result} jd={jd} />
+                <CoverLetter result={result} jd={jd} companyName={companyName} />
               </div>
             )}
 
             {/* BOTTOM ACTIONS */}
             <div className="bottom-actions">
-              <button className="reset-btn" onClick={() => { setResult(null); setAtsResult(null); setResumeFile(null); setJd(''); setError(null); setSavedToTracker(false); }}>
+              <button className="reset-btn" onClick={() => { setResult(null); setAtsResult(null); setResumeFile(null); setJd(''); setCompanyName(''); setError(null); setSavedToTracker(false); }}>
                 ← Analyze Another Resume
               </button>
               {!savedToTracker ? (
