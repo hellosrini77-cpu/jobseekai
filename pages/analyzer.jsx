@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 
-// ─── ATSBreakdown Component ────────────────────────────────────────────────
+// ─── ATSBreakdown Component ───────────────────────────────────────────────────
+
 const STRICTNESS_COLOR = (level) => {
   if (level >= 80) return { bg: '#FADBD8', text: '#922B21', label: 'Very Strict' };
   if (level >= 65) return { bg: '#FEF9E7', text: '#B7950B', label: 'Strict' };
@@ -184,7 +185,7 @@ function ATSBreakdown({ data }) {
 
 // ─── CoverLetter Component ────────────────────────────────────────────────────
 
-function CoverLetter({ result, jd, companyName }) {
+function CoverLetter({ result, jd, companyName, jobTitle }) {
   const [tone, setTone] = useState('professional');
   const [coverLetter, setCoverLetter] = useState('');
   const [loading, setLoading] = useState(false);
@@ -209,6 +210,7 @@ function CoverLetter({ result, jd, companyName }) {
           titleCurrent: result.titleRecommendation?.current || '',
           titleSuggested: result.titleRecommendation?.suggested || '',
           tone,
+          jobTitle: jobTitle || '',
         }),
       });
 
@@ -370,6 +372,7 @@ export default function Analyzer() {
   const [resumeFile, setResumeFile] = useState(null);
   const [jd, setJd] = useState('');
   const [companyName, setCompanyName] = useState('');
+  const [jobTitle, setJobTitle] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [atsResult, setAtsResult] = useState(null);
@@ -698,6 +701,13 @@ export default function Analyzer() {
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
                 />
+                <input
+                  className="company-input"
+                  type="text"
+                  placeholder="Job title (e.g. Senior Legal Operations Manager)"
+                  value={jobTitle}
+                  onChange={(e) => setJobTitle(e.target.value)}
+                />
                 <textarea
                   className="jd-textarea"
                   placeholder="Paste the full job description here — include requirements, responsibilities, and preferred qualifications for best results..."
@@ -940,13 +950,13 @@ export default function Analyzer() {
             {/* COVER LETTER */}
             {activeSection === 'cover-letter' && (
               <div className="content-card">
-                <CoverLetter result={result} jd={jd} companyName={companyName} />
+                <CoverLetter result={result} jd={jd} companyName={companyName} jobTitle={jobTitle} />
               </div>
             )}
 
             {/* BOTTOM ACTIONS */}
             <div className="bottom-actions">
-              <button className="reset-btn" onClick={() => { setResult(null); setAtsResult(null); setResumeFile(null); setJd(''); setCompanyName(''); setError(null); setSavedToTracker(false); }}>
+              <button className="reset-btn" onClick={() => { setResult(null); setAtsResult(null); setResumeFile(null); setJd(''); setCompanyName(''); setJobTitle(''); setError(null); setSavedToTracker(false); }}>
                 ← Analyze Another Resume
               </button>
               {!savedToTracker ? (
