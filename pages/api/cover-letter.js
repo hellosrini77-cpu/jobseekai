@@ -30,6 +30,7 @@ ${keywords.join(', ')}
 
 CANDIDATE'S CURRENT TITLE: ${titleCurrent}
 SUGGESTED TITLE FOR THIS ROLE: ${titleSuggested}
+ACTUAL JOB TITLE IN THE POSTING: Use the exact job title from the job description, not the suggested title above.
 
 TONE: ${toneInstructions[tone] || toneInstructions.professional}
 
