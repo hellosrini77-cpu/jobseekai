@@ -2,7 +2,7 @@
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { jd, summary, verdict, keywords, titleCurrent, titleSuggested, tone } = req.body;
+  const { jd, summary, verdict, keywords, titleCurrent, titleSuggested, tone,companyName } = req.body;
   if (!jd || !summary) return res.status(400).json({ error: 'Missing required fields' });
 
   // Extract company name from JD — look for common patterns
@@ -19,7 +19,7 @@ export default async function handler(req, res) {
 
   const prompt = `You are an expert career coach writing a tailored cover letter.
 
-COMPANY NAME: ${companyName}
+COMPANY NAME: ${companyName || 'the company'}
 
 JOB DESCRIPTION:
 ${jd}
