@@ -1,8 +1,6 @@
 import { useState, useRef } from 'react';
 
-// ─── ATSBreakdown Component 
-────────────────────────────────────────────────
-
+// ─── ATSBreakdown Component ────────────────────────────────────────────────
 const STRICTNESS_COLOR = (level) => {
   if (level >= 80) return { bg: '#FADBD8', text: '#922B21', label: 'Very Strict' };
   if (level >= 65) return { bg: '#FEF9E7', text: '#B7950B', label: 'Strict' };
