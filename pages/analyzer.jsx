@@ -21,7 +21,7 @@ function ScoreBar({ score, pass }) {
   return (
     <div style={{ width: '100%', height: 6, background: '#E8E3D9', borderRadius: 99, overflow: 'hidden' }}>
       <div style={{ width: `${score}%`, height: '100%', background: color, borderRadius: 99, transition: 'width 0.8s ease' }} />
-    </div>sections
+    </div>
   );
 }
 
