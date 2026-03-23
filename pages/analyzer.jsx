@@ -185,7 +185,7 @@ function ATSBreakdown({ data }) {
 
 // ─── CoverLetter Component ────────────────────────────────────────────────────
 
-function CoverLetter({ result, jd, companyName, jobTitle }) {
+function CoverLetter({ result, jd, companyName, jobTitle, onSaved }) {
   const [tone, setTone] = useState('professional');
   const [coverLetter, setCoverLetter] = useState('');
   const [loading, setLoading] = useState(false);
@@ -216,25 +216,30 @@ function CoverLetter({ result, jd, companyName, jobTitle }) {
 
       if (!response.ok) throw new Error('Failed to generate cover letter');
       const data = await response.json();
-      setCoverLetter(data.coverLetter);try {
-  const existing = JSON.parse(localStorage.getItem('jobseekai_tracker') || '[]');
-  const alreadySaved = existing.some(e => e.company === (companyName || '') && e.role === (jobTitle || ''));
-  if (!alreadySaved) {
-    const entry = {
-      id: Date.now(),
-      company: companyName || '',
-      role: jobTitle || '',
-      dateApplied: new Date().toISOString().split('T')[0],
-      workType: 'Unknown',
-      compensation: '',
-      atsScore: result?.atsScore || '',
-      status: 'Applied',
-      notes: 'Auto-saved from cover letter generator',
-    };
-    localStorage.setItem('jobseekai_tracker', JSON.stringify([...existing, entry]));
-  }
-} catch {}
-      
+      setCoverLetter(data.coverLetter);
+
+      // Auto-save to tracker
+      try {
+        const existing = JSON.parse(localStorage.getItem('jobseekai_tracker') || '[]');
+        const alreadySaved = existing.some(e => e.company === (companyName || '') && e.role === (jobTitle || '') && e.company !== '');
+        if (!alreadySaved) {
+          const workType = /remote/i.test(jd) ? 'Remote' : /hybrid/i.test(jd) ? 'Hybrid' : /onsite|on-site/i.test(jd) ? 'Onsite' : 'Unknown';
+          const compMatch = jd.match(/\$[\d,]+[Kk]?\s*[-–]\s*\$[\d,]+[Kk]?|\$[\d,]+[Kk]+/);
+          const entry = {
+            id: Date.now(),
+            company: companyName || '',
+            role: jobTitle || '',
+            dateApplied: new Date().toISOString().split('T')[0],
+            workType,
+            compensation: compMatch ? compMatch[0] : '',
+            atsScore: result?.atsScore || '',
+            status: 'Applied',
+            notes: 'Auto-saved from cover letter generator',
+          };
+          localStorage.setItem('jobseekai_tracker', JSON.stringify([...existing, entry]));
+        }
+      } catch {}
+
     } catch (err) {
       setError(err.message);
     } finally {
@@ -468,22 +473,6 @@ export default function Analyzer() {
     }
   };
 
-  const saveToTracker = () => {
-    try {
-      const existing = JSON.parse(localStorage.getItem('jobseekai_tracker') || '[]');
-      const workType = /\bremote\b/i.test(jd) ? 'Remote' : /\bhybrid\b/i.test(jd) ? 'Hybrid' : /\bonsite\b|on-site\b/i.test(jd) ? 'Onsite' : 'Unknown';
-      const compMatch = jd.match(/\$[\d,]+[Kk]?\s*[-–]\s*\$[\d,]+[Kk]?|\$[\d,]+[Kk]\+?/);
-      const entry = {
-        id: Date.now(),
-        company: companyName || '',
-        role: jobTitle || result?.titleRecommendation?.current || '',
-        dateApplied: new Date().toISOString().split('T')[0],
-        workType,
-        compensation: compMatch ? compMatch[0] : '',
-        atsScore: result?.atsScore || '',
-        status: 'Applied',
-        notes: '',
-      };
       localStorage.setItem('jobseekai_tracker', JSON.stringify([...existing, entry]));
       setSavedToTracker(true);
     } catch {}
@@ -968,7 +957,7 @@ export default function Analyzer() {
             {/* COVER LETTER */}
             {activeSection === 'cover-letter' && (
               <div className="content-card">
-                <CoverLetter result={result} jd={jd} companyName={companyName} jobTitle={jobTitle} />
+                <CoverLetter result={result} jd={jd} companyName={companyName} jobTitle={jobTitle} onSaved={() => setSavedToTracker(true)} />
               </div>
             )}
 
@@ -977,13 +966,9 @@ export default function Analyzer() {
               <button className="reset-btn" onClick={() => { setResult(null); setAtsResult(null); setResumeFile(null); setJd(''); setCompanyName(''); setJobTitle(''); setError(null); setSavedToTracker(false); }}>
                 ← Analyze Another Resume
               </button>
-              {!savedToTracker ? (
-                <button className="save-btn" onClick={saveToTracker}>
-                  📋 Save to Tracker
-                </button>
-              ) : (
+              {savedToTracker && (
                 <div className="saved-msg">
-                  ✓ Saved!
+                  ✓ Saved to Tracker
                   <a href="/tracker" style={{ color: 'var(--green)', fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 3 }}>
                     View Tracker →
                   </a>
