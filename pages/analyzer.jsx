@@ -216,7 +216,25 @@ function CoverLetter({ result, jd, companyName, jobTitle }) {
 
       if (!response.ok) throw new Error('Failed to generate cover letter');
       const data = await response.json();
-      setCoverLetter(data.coverLetter);
+      setCoverLetter(data.coverLetter);try {
+  const existing = JSON.parse(localStorage.getItem('jobseekai_tracker') || '[]');
+  const alreadySaved = existing.some(e => e.company === (companyName || '') && e.role === (jobTitle || ''));
+  if (!alreadySaved) {
+    const entry = {
+      id: Date.now(),
+      company: companyName || '',
+      role: jobTitle || '',
+      dateApplied: new Date().toISOString().split('T')[0],
+      workType: 'Unknown',
+      compensation: '',
+      atsScore: result?.atsScore || '',
+      status: 'Applied',
+      notes: 'Auto-saved from cover letter generator',
+    };
+    localStorage.setItem('jobseekai_tracker', JSON.stringify([...existing, entry]));
+  }
+} catch {}
+      
     } catch (err) {
       setError(err.message);
     } finally {
