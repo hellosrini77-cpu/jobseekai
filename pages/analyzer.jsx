@@ -472,12 +472,6 @@ export default function Analyzer() {
       setLoading(false);
     }
   };
-
-      localStorage.setItem('jobseekai_tracker', JSON.stringify([...existing, entry]));
-      setSavedToTracker(true);
-    } catch {}
-  };
-
   const copyBullet = (text, id) => {
     navigator.clipboard.writeText(text);
     setCopiedBullet(id);
