@@ -476,7 +476,7 @@ export default function Analyzer() {
       const entry = {
         id: Date.now(),
         company: companyName || '',
-        role: result?.titleRecommendation?.current || '',
+        role: jobTitle || result?.titleRecommendation?.current || '',
         dateApplied: new Date().toISOString().split('T')[0],
         workType,
         compensation: compMatch ? compMatch[0] : '',
