@@ -1,22 +1,67 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { initializeApp, getApps } from 'firebase/app';
+import {
+  getAuth,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
+  signOut,
+} from 'firebase/auth';
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  query,
+  where,
+  orderBy,
+  onSnapshot,
+} from 'firebase/firestore';
 
+// ── Firebase config — replace with your project's config ──────────────────────
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+};
+
+// Prevent re-initialization on hot reload
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+const auth = getAuth(app);
+const db = getFirestore(app);
+const googleProvider = new GoogleAuthProvider();
+
+// ── Constants ──────────────────────────────────────────────────────────────────
 const STATUS_CONFIG = {
-  Applied:    { bg: '#D6EAF8', text: '#1A5276', dot: '#2E86C1' },
-  Interview:  { bg: '#FEF9E7', text: '#B7950B', dot: '#D4AC0D' },
-  Offer:      { bg: '#D5F5E3', text: '#1E8449', dot: '#27AE60' },
-  Rejected:   { bg: '#FADBD8', text: '#922B21', dot: '#E74C3C' },
-  Withdrawn:  { bg: '#F2F3F4', text: '#626567', dot: '#AAB7B8' },
+  Applied:   { bg: '#D6EAF8', text: '#1A5276', dot: '#2E86C1' },
+  Interview: { bg: '#FEF9E7', text: '#B7950B', dot: '#D4AC0D' },
+  Offer:     { bg: '#D5F5E3', text: '#1E8449', dot: '#27AE60' },
+  Rejected:  { bg: '#FADBD8', text: '#922B21', dot: '#E74C3C' },
+  Withdrawn: { bg: '#F2F3F4', text: '#626567', dot: '#AAB7B8' },
 };
 
 const WORK_TYPES = ['Remote', 'Hybrid', 'Onsite', 'Unknown'];
 const STATUSES = Object.keys(STATUS_CONFIG);
 
+const emptyForm = {
+  company: '', role: '', dateApplied: new Date().toISOString().split('T')[0],
+  workType: 'Unknown', compensation: '', status: 'Applied', notes: '', atsScore: '',
+};
+
+// ── Sub-components ─────────────────────────────────────────────────────────────
 function WorkTypeBadge({ type }) {
   const colors = {
-    Remote: { bg: '#D5F5E3', text: '#1E8449' },
-    Hybrid: { bg: '#D6EAF8', text: '#1A5276' },
-    Onsite: { bg: '#FEF9E7', text: '#B7950B' },
+    Remote:  { bg: '#D5F5E3', text: '#1E8449' },
+    Hybrid:  { bg: '#D6EAF8', text: '#1A5276' },
+    Onsite:  { bg: '#FEF9E7', text: '#B7950B' },
     Unknown: { bg: '#F2F3F4', text: '#626567' },
   };
   const c = colors[type] || colors['Unknown'];
@@ -27,11 +72,103 @@ function WorkTypeBadge({ type }) {
   );
 }
 
-const emptyForm = {
-  company: '', role: '', dateApplied: new Date().toISOString().split('T')[0],
-  workType: 'Unknown', compensation: '', status: 'Applied', notes: '', atsScore: '',
-};
+// ── Auth Screen ────────────────────────────────────────────────────────────────
+function AuthScreen({ onAuth }) {
+  const [mode, setMode] = useState('signin'); // 'signin' | 'signup'
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
+  const handleEmailAuth = async () => {
+    if (!email || !password) return;
+    setLoading(true);
+    setError('');
+    try {
+      if (mode === 'signin') {
+        await signInWithEmailAndPassword(auth, email, password);
+      } else {
+        await createUserWithEmailAndPassword(auth, email, password);
+      }
+    } catch (e) {
+      setError(e.message.replace('Firebase: ', '').replace(/\(auth\/.*\)/, '').trim());
+    }
+    setLoading(false);
+  };
+
+  const handleGoogle = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (e) {
+      setError(e.message.replace('Firebase: ', '').trim());
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div style={{ minHeight: '100vh', background: 'var(--cream)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <a href="/" style={{ fontFamily: "'Playfair Display', serif", fontSize: 24, fontWeight: 700, textDecoration: 'none', color: 'var(--ink)', marginBottom: 8 }}>
+        JobSeek<span style={{ color: 'var(--gold)' }}>AI</span>
+      </a>
+      <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 32 }}>Sign in to access your application tracker</p>
+
+      <div style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 12, padding: '36px 40px', width: '100%', maxWidth: 400 }}>
+
+        {/* Google button */}
+        <button onClick={handleGoogle} disabled={loading}
+          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, border: '1px solid var(--border)', borderRadius: 8, padding: '11px 16px', fontSize: 14, fontWeight: 500, background: 'var(--white)', color: 'var(--ink)', cursor: 'pointer', marginBottom: 20 }}>
+          <svg width="18" height="18" viewBox="0 0 48 48">
+            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+          </svg>
+          Continue with Google
+        </button>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+          <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+          <span style={{ fontSize: 12, color: 'var(--muted)' }}>or</span>
+          <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+        </div>
+
+        {/* Email/password */}
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1.5px', color: 'var(--muted)', display: 'block', marginBottom: 6 }}>Email</label>
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+            placeholder="you@email.com"
+            style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 6, padding: '10px 12px', fontSize: 13, background: '#faf7f2', outline: 'none', color: 'var(--ink)' }} />
+        </div>
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1.5px', color: 'var(--muted)', display: 'block', marginBottom: 6 }}>Password</label>
+          <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+            placeholder="••••••••"
+            onKeyDown={e => e.key === 'Enter' && handleEmailAuth()}
+            style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 6, padding: '10px 12px', fontSize: 13, background: '#faf7f2', outline: 'none', color: 'var(--ink)' }} />
+        </div>
+
+        {error && <p style={{ fontSize: 12, color: '#c0392b', marginBottom: 14 }}>{error}</p>}
+
+        <button onClick={handleEmailAuth} disabled={loading || !email || !password}
+          style={{ width: '100%', background: 'var(--ink)', color: 'var(--cream)', border: 'none', borderRadius: 6, padding: '11px', fontSize: 14, fontWeight: 600, cursor: 'pointer', opacity: (!email || !password || loading) ? 0.6 : 1, marginBottom: 16 }}>
+          {loading ? 'Please wait...' : mode === 'signin' ? 'Sign In' : 'Create Account'}
+        </button>
+
+        <p style={{ fontSize: 13, color: 'var(--muted)', textAlign: 'center' }}>
+          {mode === 'signin' ? "Don't have an account? " : 'Already have an account? '}
+          <button onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(''); }}
+            style={{ background: 'none', border: 'none', color: 'var(--gold)', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>
+            {mode === 'signin' ? 'Sign up' : 'Sign in'}
+          </button>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ── CSV Export ─────────────────────────────────────────────────────────────────
 const exportCSV = (apps) => {
   const headers = ['Company', 'Role', 'Date Applied', 'Work Type', 'Compensation', 'ATS Score', 'Status', 'Notes'];
   const rows = apps.map(a => [
@@ -48,7 +185,9 @@ const exportCSV = (apps) => {
   URL.revokeObjectURL(url);
 };
 
+// ── Main Tracker ───────────────────────────────────────────────────────────────
 export default function Tracker() {
+  const [user, setUser] = useState(undefined); // undefined = loading, null = signed out
   const [apps, setApps] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
@@ -56,29 +195,49 @@ export default function Tracker() {
   const [filterStatus, setFilterStatus] = useState('All');
   const [sortBy, setSortBy] = useState('dateApplied');
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [saving, setSaving] = useState(false);
 
+  // Auth listener
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('jobseekai_tracker');
-      if (saved) setApps(JSON.parse(saved));
-    } catch {}
+    const unsub = onAuthStateChanged(auth, (u) => setUser(u));
+    return unsub;
   }, []);
 
-  const save = (updated) => {
-    setApps(updated);
-    try { localStorage.setItem('jobseekai_tracker', JSON.stringify(updated)); } catch {}
-  };
+  // Firestore listener — real-time sync
+  useEffect(() => {
+    if (!user) return;
+    const q = query(
+      collection(db, 'applications'),
+      where('uid', '==', user.uid),
+      orderBy('createdAt', 'desc')
+    );
+    const unsub = onSnapshot(q, (snapshot) => {
+      setApps(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+    return unsub;
+  }, [user]);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!form.company.trim() || !form.role.trim()) return;
-    if (editId !== null) {
-      save(apps.map(a => a.id === editId ? { ...form, id: editId } : a));
-      setEditId(null);
-    } else {
-      save([...apps, { ...form, id: Date.now() }]);
+    setSaving(true);
+    try {
+      if (editId !== null) {
+        const { id, ...data } = form;
+        await updateDoc(doc(db, 'applications', editId), data);
+        setEditId(null);
+      } else {
+        await addDoc(collection(db, 'applications'), {
+          ...form,
+          uid: user.uid,
+          createdAt: new Date().toISOString(),
+        });
+      }
+      setForm(emptyForm);
+      setShowForm(false);
+    } catch (e) {
+      console.error('Save error:', e);
     }
-    setForm(emptyForm);
-    setShowForm(false);
+    setSaving(false);
   };
 
   const handleEdit = (app) => {
@@ -88,13 +247,13 @@ export default function Tracker() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleDelete = (id) => {
-    save(apps.filter(a => a.id !== id));
+  const handleDelete = async (id) => {
+    await deleteDoc(doc(db, 'applications', id));
     setDeleteConfirm(null);
   };
 
-  const handleStatusChange = (id, status) => {
-    save(apps.map(a => a.id === id ? { ...a, status } : a));
+  const handleStatusChange = async (id, status) => {
+    await updateDoc(doc(db, 'applications', id), { status });
   };
 
   const filtered = apps
@@ -107,6 +266,18 @@ export default function Tracker() {
     });
 
   const counts = STATUSES.reduce((acc, s) => ({ ...acc, [s]: apps.filter(a => a.status === s).length }), {});
+
+  // Loading state
+  if (user === undefined) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#f5f0e8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <p style={{ fontFamily: 'DM Sans, sans-serif', color: '#6b6559' }}>Loading...</p>
+      </div>
+    );
+  }
+
+  // Not signed in
+  if (!user) return <AuthScreen />;
 
   return (
     <>
@@ -133,9 +304,18 @@ export default function Tracker() {
 
       <nav>
         <a href="/" className="logo">JobSeek<span>AI</span></a>
-        <Link href="/analyzer" style={{ fontSize: 13, color: 'var(--muted)', textDecoration: 'none', fontWeight: 500 }}>
-          ← Resume Analyzer
-        </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+          <Link href="/analyzer" style={{ fontSize: 13, color: 'var(--muted)', textDecoration: 'none', fontWeight: 500 }}>
+            ← Resume Analyzer
+          </Link>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 12, color: 'var(--muted)' }}>{user.email || user.displayName}</span>
+            <button onClick={() => signOut(auth)}
+              style={{ fontSize: 12, color: 'var(--muted)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 12px', cursor: 'pointer' }}>
+              Sign out
+            </button>
+          </div>
+        </div>
       </nav>
 
       <div className="page" style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 48px 80px' }}>
@@ -146,65 +326,50 @@ export default function Tracker() {
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '2px', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: 8 }}>
               Application Tracker
             </div>
-            <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 36, fontWeight: 900, letterSpacing: '-1px', marginBottom: 8 }}>
-              Your job search pipeline.
+            <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 32, fontWeight: 900, letterSpacing: '-1px' }}>
+              Your Job Search
             </h1>
-            <p style={{ color: 'var(--muted)', fontSize: 15, fontWeight: 300 }}>
-              Track every application, interview, and offer in one place.
-            </p>
           </div>
-          <div style={{ display: 'flex', gap: 10, flexShrink: 0, marginTop: 8 }}>
+          <div style={{ display: 'flex', gap: 10 }}>
             {apps.length > 0 && (
               <button onClick={() => exportCSV(apps)}
-                style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 20px', fontSize: 13, fontWeight: 600, color: 'var(--muted)', cursor: 'pointer' }}>
-                ↓ Export CSV
+                style={{ fontSize: 13, color: 'var(--muted)', background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 6, padding: '10px 18px', cursor: 'pointer', fontWeight: 500 }}>
+                Export CSV
               </button>
             )}
-            <button
-              onClick={() => { setForm(emptyForm); setEditId(null); setShowForm(!showForm); }}
-              style={{ background: 'var(--ink)', color: 'var(--cream)', border: 'none', borderRadius: 8, padding: '12px 24px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
-            >
-              + Add Application
+            <button onClick={() => { setForm(emptyForm); setEditId(null); setShowForm(!showForm); }}
+              style={{ background: 'var(--ink)', color: 'var(--cream)', border: 'none', borderRadius: 6, padding: '10px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+              {showForm ? 'Cancel' : '+ Add Application'}
             </button>
           </div>
         </div>
 
         {/* Stats */}
         <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, marginBottom: 28 }}>
-          {STATUSES.map(s => {
-            const cfg = STATUS_CONFIG[s];
-            return (
-              <div key={s} onClick={() => setFilterStatus(filterStatus === s ? 'All' : s)}
-                style={{ background: 'var(--white)', border: `1px solid ${filterStatus === s ? cfg.dot : 'var(--border)'}`, borderTop: `3px solid ${cfg.dot}`, borderRadius: 10, padding: '16px 18px', textAlign: 'center', cursor: 'pointer', transition: 'all 0.15s' }}>
-                <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, fontWeight: 900, color: cfg.text, lineHeight: 1 }}>{counts[s] || 0}</div>
-                <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--muted)', marginTop: 4 }}>{s}</div>
-              </div>
-            );
-          })}
+          {STATUSES.map(s => (
+            <div key={s} style={{ background: STATUS_CONFIG[s].bg, borderRadius: 10, padding: '16px 20px' }}>
+              <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Playfair Display', serif", color: STATUS_CONFIG[s].text }}>{counts[s]}</div>
+              <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', color: STATUS_CONFIG[s].text, opacity: 0.8 }}>{s}</div>
+            </div>
+          ))}
         </div>
 
-        {/* Add / Edit Form */}
+        {/* Form */}
         {showForm && (
-          <div style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 12, padding: 28, marginBottom: 28 }}>
-            <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: 18, fontWeight: 700, marginBottom: 20 }}>
-              {editId !== null ? 'Edit Application' : 'Add Application'}
-            </h3>
-            <div className="form-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 16 }}>
-              {[
-                { label: 'Company *', key: 'company', placeholder: 'e.g. Acme Corp' },
-                { label: 'Role *', key: 'role', placeholder: 'e.g. Legal Operations Manager' },
-                { label: 'Date Applied', key: 'dateApplied', type: 'date' },
-              ].map(({ label, key, placeholder, type }) => (
+          <div style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 12, padding: '28px 32px', marginBottom: 28 }}>
+            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, fontWeight: 700, marginBottom: 20 }}>
+              {editId !== null ? 'Edit Application' : 'New Application'}
+            </h2>
+            <div className="form-grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 16 }}>
+              {[['Company', 'company', 'text', 'Google'], ['Role', 'role', 'text', 'Software Engineer'], ['Date Applied', 'dateApplied', 'date', '']].map(([label, key, type, placeholder]) => (
                 <div key={key}>
                   <label style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1.5px', color: 'var(--muted)', display: 'block', marginBottom: 6 }}>{label}</label>
-                  <input type={type || 'text'} placeholder={placeholder} value={form[key]}
-                    onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                    style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 6, padding: '10px 12px', fontSize: 13, background: '#faf7f2', outline: 'none', color: 'var(--ink)' }}
-                  />
+                  <input type={type} value={form[key]} placeholder={placeholder} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                    style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 6, padding: '10px 12px', fontSize: 13, background: '#faf7f2', color: 'var(--ink)', outline: 'none' }} />
                 </div>
               ))}
             </div>
-            <div className="form-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 16 }}>
+            <div className="form-grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 16 }}>
               <div>
                 <label style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1.5px', color: 'var(--muted)', display: 'block', marginBottom: 6 }}>Work Type</label>
                 <select value={form.workType} onChange={e => setForm(f => ({ ...f, workType: e.target.value }))}
@@ -214,17 +379,8 @@ export default function Tracker() {
               </div>
               <div>
                 <label style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1.5px', color: 'var(--muted)', display: 'block', marginBottom: 6 }}>Compensation</label>
-                <input type="text" placeholder="e.g. $120K–$150K" value={form.compensation}
-                  onChange={e => setForm(f => ({ ...f, compensation: e.target.value }))}
-                  style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 6, padding: '10px 12px', fontSize: 13, background: '#faf7f2', outline: 'none', color: 'var(--ink)' }}
-                />
-              </div>
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1.5px', color: 'var(--muted)', display: 'block', marginBottom: 6 }}>ATS Score</label>
-                <input type="number" min="0" max="100" placeholder="e.g. 78" value={form.atsScore}
-                  onChange={e => setForm(f => ({ ...f, atsScore: e.target.value }))}
-                  style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 6, padding: '10px 12px', fontSize: 13, background: '#faf7f2', outline: 'none', color: 'var(--ink)' }}
-                />
+                <input type="text" value={form.compensation} placeholder="$120,000" onChange={e => setForm(f => ({ ...f, compensation: e.target.value }))}
+                  style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 6, padding: '10px 12px', fontSize: 13, background: '#faf7f2', color: 'var(--ink)', outline: 'none' }} />
               </div>
               <div>
                 <label style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1.5px', color: 'var(--muted)', display: 'block', marginBottom: 6 }}>Status</label>
@@ -239,13 +395,12 @@ export default function Tracker() {
               <textarea placeholder="Recruiter name, next steps, salary discussed..." value={form.notes}
                 onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
                 rows={2}
-                style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 6, padding: '10px 12px', fontSize: 13, background: '#faf7f2', resize: 'vertical', outline: 'none', color: 'var(--ink)' }}
-              />
+                style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 6, padding: '10px 12px', fontSize: 13, background: '#faf7f2', resize: 'vertical', outline: 'none', color: 'var(--ink)' }} />
             </div>
             <div style={{ display: 'flex', gap: 12 }}>
-              <button onClick={handleSubmit} disabled={!form.company.trim() || !form.role.trim()}
-                style={{ background: 'var(--ink)', color: 'var(--cream)', border: 'none', borderRadius: 6, padding: '11px 28px', fontSize: 14, fontWeight: 600, cursor: 'pointer', opacity: (!form.company.trim() || !form.role.trim()) ? 0.5 : 1 }}>
-                {editId !== null ? 'Save Changes' : 'Add Application'}
+              <button onClick={handleSubmit} disabled={!form.company.trim() || !form.role.trim() || saving}
+                style={{ background: 'var(--ink)', color: 'var(--cream)', border: 'none', borderRadius: 6, padding: '11px 28px', fontSize: 14, fontWeight: 600, cursor: 'pointer', opacity: (!form.company.trim() || !form.role.trim() || saving) ? 0.5 : 1 }}>
+                {saving ? 'Saving...' : editId !== null ? 'Save Changes' : 'Add Application'}
               </button>
               <button onClick={() => { setShowForm(false); setEditId(null); setForm(emptyForm); }}
                 style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '11px 24px', fontSize: 13, color: 'var(--muted)', cursor: 'pointer' }}>
@@ -310,10 +465,8 @@ export default function Tracker() {
                     </td>
                     <td style={{ padding: '14px 16px', textAlign: 'center' }}>
                       {app.atsScore ? (
-                        <span style={{
-                          fontFamily: "'Playfair Display', serif", fontSize: 15, fontWeight: 700,
-                          color: app.atsScore >= 75 ? '#2d6a4f' : app.atsScore >= 50 ? '#856404' : '#c0392b'
-                        }}>{app.atsScore}</span>
+                        <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 15, fontWeight: 700,
+                          color: app.atsScore >= 75 ? '#2d6a4f' : app.atsScore >= 50 ? '#856404' : '#c0392b' }}>{app.atsScore}</span>
                       ) : <span style={{ color: '#ccc', fontSize: 13 }}>—</span>}
                     </td>
                     <td style={{ padding: '14px 16px' }}>
@@ -353,7 +506,7 @@ export default function Tracker() {
               {filterStatus !== 'All' ? `No ${filterStatus} applications` : 'No applications yet'}
             </div>
             <p style={{ color: 'var(--muted)', fontSize: 14, fontWeight: 300, marginBottom: 20 }}>
-              {filterStatus !== 'All' ? 'Try a different filter.' : 'Add your first application or analyze a resume to get started.'}
+              {filterStatus !== 'All' ? 'Try a different filter.' : 'Add your first application to get started.'}
             </p>
             {filterStatus === 'All' && (
               <button onClick={() => { setForm(emptyForm); setEditId(null); setShowForm(true); }}
@@ -373,5 +526,3 @@ export default function Tracker() {
     </>
   );
 }
-
-
