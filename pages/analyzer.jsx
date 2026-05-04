@@ -10,7 +10,39 @@ const STRICTNESS_COLOR = (level) => {
 };
 
 const SCORE_BADGE = (score) => {
-  if (score >= 80) return { bg: '#D5F5E3', text: '#1E8449', label: 'Strong' };
+  if (score >= 80) return { bg: '#D5F5E3', text: '#1E8449', label: 'Strong' };We’re looking for a leader to build an AI native legal operations and strategy function from the ground up. You’ll own the systems and workflow architecture that let a small, high-impact legal team scale with one of the fastest-growing companies in AI: contract management, outside counsel coordination, legal tech stack, the workflows that connect legal to every corner of Suno, and cross-functional strategy.
+
+This isn't a traditional legal ops role — we expect you to evaluate, stress-test, and help configure the AI tools that will define how legal teams operate in the next decade. You’ll report to Suno’s General Counsel and work alongside a tight-knit legal team covering legal & business affairs, commercial, litigation, product & privacy, and corporate matters. The measure of success is simple: our most important business initiatives stay unblocked, well-supported, and ahead of the curve.
+
+Check out our Suno version of the job here!
+
+What You’ll Do
+
+Design, implement, and manage Suno’s legal technology stack—contract lifecycle management (CLM), matter management, e-billing, and AI-powered legal tools that match the way we build.
+Own the end-to-end contract lifecycle from intake and triage through execution and renewal, building scalable processes, templates, and self-service tools that empower the business to move quickly.
+Manage relationships with outside counsel and legal service providers, including budget tracking, performance evaluation, and strategic allocation of work.
+Build and maintain KPI dashboards to track legal team performance, spend, and turnaround times—giving leadership clear visibility into how legal operates.
+Partner cross-functionally with Finance, People Ops, and business teams to ensure legal processes and strategy align with how Suno actually works, not how legal departments traditionally work.
+Develop and refine legal department infrastructure: playbooks, system design, knowledge management, onboarding materials, and the operational backbone that lets a lean team punch above its weight.
+
+Must-haves
+
+What We’re Looking For
+
+8+ years of experience in operations, with at least some time spent in legal operations specifically. We welcome lawyers who like to code to apply as well.
+Proven track record of building or scaling legal operations functions from early stages — you’ve done the zero-to-one work before.
+Deep understanding of how to leverage AI-powered legal tools and emerging legal tech—bonus points if you’ve built workflows around them.
+Expertise in legal technology, including CLM platforms (e.g., Ironclad, DocuSign CLM, Agiloft), e-billing systems, and matter management tools.
+Strong analytical skills and a data-driven mindset—you build dashboards, not just spreadsheets.
+Excellent project management instincts, with the ability to run multiple initiatives simultaneously without dropping threads.
+
+Nice-to-haves (we encourage you to apply even if you don’t check every box):
+
+Experience at a high-growth technology or AI company navigating ambiguity and rapid change.
+Background in contract management, paralegal work, or legal practice.
+CLOC certification or equivalent legal operations training.
+Experience managing outside counsel in complex IP, regulatory, or litigation-heavy environments.
+
   if (score >= 65) return { bg: '#D6EAF8', text: '#1A5276', label: 'Good' };
   if (score >= 50) return { bg: '#FEF9E7', text: '#B7950B', label: 'Fair' };
   return { bg: '#FADBD8', text: '#922B21', label: 'Weak' };
