@@ -475,7 +475,7 @@ export default function Analyzer() {
 
       localStorage.setItem('jobseekai_tracker', JSON.stringify([...existing, entry]));
       setSavedToTracker(true);
-    } catch {}
+    } catch(e) {}
   };
 
   const copyBullet = (text, id) => {
