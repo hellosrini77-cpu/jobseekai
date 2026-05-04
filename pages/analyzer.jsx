@@ -238,7 +238,7 @@ function CoverLetter({ result, jd, companyName, jobTitle, onSaved }) {
           };
           localStorage.setItem('jobseekai_tracker', JSON.stringify([...existing, entry]));
         }
-      }  catch (e) { console.log(e); }
+      } catch (e) {}
 
     } catch (err) {
       setError(err.message);
@@ -473,6 +473,16 @@ export default function Analyzer() {
     }
   };
 
+  const saveToTracker = () => {
+    try {
+      const entry = {
+        id: Date.now(),
+        company: companyName,
+        jobTitle: jobTitle,
+        score: result?.overallScore ?? null,
+        date: new Date().toISOString(),
+      };
+      const existing = JSON.parse(localStorage.getItem('jobseekai_tracker') || '[]');
       localStorage.setItem('jobseekai_tracker', JSON.stringify([...existing, entry]));
       setSavedToTracker(true);
     } catch (e) { console.log(e); }
