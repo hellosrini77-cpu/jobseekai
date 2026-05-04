@@ -238,7 +238,7 @@ function CoverLetter({ result, jd, companyName, jobTitle, onSaved }) {
           };
           localStorage.setItem('jobseekai_tracker', JSON.stringify([...existing, entry]));
         }
-      } catch {}
+      } catch (e) {}
 
     } catch (err) {
       setError(err.message);
