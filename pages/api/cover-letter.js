@@ -1,9 +1,18 @@
 // api/cover-letter.js
+import { rateLimit } from '../../lib/rateLimit';
+
+const MAX_FIELD_CHARS = 20000;
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (!rateLimit(req, res, { key: 'cover-letter', limit: 10 })) return;
 
-  const { jd, summary, verdict, keywords, titleCurrent, titleSuggested, tone, companyName, jobTitle } = req.body;
+  const { jd, summary, verdict, keywords, titleCurrent, titleSuggested, tone, companyName, jobTitle } = req.body || {};
   if (!jd || !summary) return res.status(400).json({ error: 'Missing required fields' });
+  if (typeof jd !== 'string' || typeof summary !== 'string' || jd.length > MAX_FIELD_CHARS || summary.length > MAX_FIELD_CHARS) {
+    return res.status(400).json({ error: 'Input too long or invalid' });
+  }
+  if (keywords !== undefined && !Array.isArray(keywords)) return res.status(400).json({ error: 'Invalid keywords' });
 
   const toneInstructions = {
     professional: 'Write in a polished, precise, and confident professional tone. Formal but not stiff.',
@@ -27,7 +36,7 @@ RESUME VERDICT:
 ${verdict}
 
 KEYWORDS ALREADY IN RESUME:
-${keywords.join(', ')}
+${(keywords || []).join(', ')}
 
 TONE: ${toneInstructions[tone] || toneInstructions.professional}
 

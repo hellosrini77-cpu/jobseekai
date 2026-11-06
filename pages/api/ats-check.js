@@ -3,6 +3,7 @@ import formidable from 'formidable';
 import fs from 'fs';
 import pdfParse from 'pdf-parse/lib/pdf-parse.js';
 import mammoth from 'mammoth';
+import { rateLimit } from '../../lib/rateLimit';
 
 export const config = {
   api: {
@@ -89,6 +90,7 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (!rateLimit(req, res, { key: 'ats-check', limit: 10 })) return;
 
   try {
     const form = formidable({ maxFileSize: 5 * 1024 * 1024 });
