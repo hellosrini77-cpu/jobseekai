@@ -8,6 +8,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithPopup,
   GoogleAuthProvider,
+  sendPasswordResetEmail,
   signOut,
 } from 'firebase/auth';
 import {
@@ -78,6 +79,7 @@ function AuthScreen({ onAuth }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
 
   // Turn Firebase auth errors into readable messages. Unknown codes are shown so they can be diagnosed.
@@ -116,9 +118,32 @@ function AuthScreen({ onAuth }) {
     setLoading(false);
   };
 
+  const handleReset = async () => {
+    setError('');
+    setInfo('');
+    if (!email) {
+      setError('Enter your email above, then click "Forgot password?".');
+      return;
+    }
+    setLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, email);
+      // Same message whether or not the account exists, so the form does not reveal which emails are registered.
+      setInfo('If an account exists for this email, a password reset link is on its way. Check your inbox and spam folder.');
+    } catch (e) {
+      if (e && (e.code === 'auth/user-not-found')) {
+        setInfo('If an account exists for this email, a password reset link is on its way. Check your inbox and spam folder.');
+      } else {
+        setError(authErrorMessage(e));
+      }
+    }
+    setLoading(false);
+  };
+
   const handleGoogle = async () => {
     setLoading(true);
     setError('');
+    setInfo('');
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (e) {
@@ -169,7 +194,17 @@ function AuthScreen({ onAuth }) {
             style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 6, padding: '10px 12px', fontSize: 13, background: '#faf7f2', outline: 'none', color: 'var(--ink)' }} />
         </div>
 
+        {mode === 'signin' && (
+          <div style={{ textAlign: 'right', marginTop: -10, marginBottom: 14 }}>
+            <button onClick={handleReset} disabled={loading}
+              style={{ background: 'none', border: 'none', color: 'var(--gold)', cursor: 'pointer', fontSize: 12, fontWeight: 600, padding: 0 }}>
+              Forgot password?
+            </button>
+          </div>
+        )}
+
         {error && <p style={{ fontSize: 12, color: '#c0392b', marginBottom: 14 }}>{error}</p>}
+        {info && <p style={{ fontSize: 12, color: '#2e7d32', marginBottom: 14 }}>{info}</p>}
 
         <button onClick={handleEmailAuth} disabled={loading || !email || !password}
           style={{ width: '100%', background: 'var(--ink)', color: 'var(--cream)', border: 'none', borderRadius: 6, padding: '11px', fontSize: 14, fontWeight: 600, cursor: 'pointer', opacity: (!email || !password || loading) ? 0.6 : 1, marginBottom: 16 }}>
@@ -178,7 +213,7 @@ function AuthScreen({ onAuth }) {
 
         <p style={{ fontSize: 13, color: 'var(--muted)', textAlign: 'center' }}>
           {mode === 'signin' ? "Don't have an account? " : 'Already have an account? '}
-          <button onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(''); }}
+          <button onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(''); setInfo(''); }}
             style={{ background: 'none', border: 'none', color: 'var(--gold)', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>
             {mode === 'signin' ? 'Sign up' : 'Sign in'}
           </button>
