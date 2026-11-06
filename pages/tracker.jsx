@@ -80,6 +80,26 @@ function AuthScreen({ onAuth }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Turn Firebase auth errors into readable messages. Unknown codes are shown so they can be diagnosed.
+  const authErrorMessage = (e) => {
+    const code = (e && e.code) || '';
+    const known = {
+      'auth/email-already-in-use': 'An account with this email already exists. Try signing in instead.',
+      'auth/invalid-credential': 'Incorrect email or password.',
+      'auth/wrong-password': 'Incorrect email or password.',
+      'auth/user-not-found': 'Incorrect email or password.',
+      'auth/invalid-email': 'Please enter a valid email address.',
+      'auth/weak-password': 'Password must be at least 6 characters.',
+      'auth/too-many-requests': 'Too many attempts. Please wait a few minutes and try again.',
+      'auth/network-request-failed': 'Network error. Check your connection and try again.',
+      'auth/popup-closed-by-user': 'The Google sign-in window was closed before finishing.',
+      'auth/unauthorized-domain': 'Sign-in is not enabled for this website address yet.',
+      'auth/operation-not-allowed': 'This sign-in method is not enabled yet.',
+    };
+    if (known[code]) return known[code];
+    return `Sign-in failed${code ? ` (${code})` : ''}. Please try again.`;
+  };
+
   const handleEmailAuth = async () => {
     if (!email || !password) return;
     setLoading(true);
@@ -91,7 +111,7 @@ function AuthScreen({ onAuth }) {
         await createUserWithEmailAndPassword(auth, email, password);
       }
     } catch (e) {
-      setError(e.message.replace('Firebase: ', '').replace(/\(auth\/.*\)/, '').trim());
+      setError(authErrorMessage(e));
     }
     setLoading(false);
   };
@@ -102,7 +122,7 @@ function AuthScreen({ onAuth }) {
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (e) {
-      setError(e.message.replace('Firebase: ', '').trim());
+      setError(authErrorMessage(e));
     }
     setLoading(false);
   };
